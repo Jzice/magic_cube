@@ -3,6 +3,7 @@ import { initScene } from './core/scene';
 import { buildCube } from './core/cubeModel';
 import { startLoop } from './core/moveEngine';
 import { onPointerDown, onPointerMove, onPointerUp } from './interaction/pointerControls';
+import { initUI } from './ui/bootstrap';
 import { bindControls } from './ui/controls';
 import { buildTutorialSteps } from './ui/tutorialPanel';
 import { updateHistoryUI } from './ui/historyPanel';
@@ -10,6 +11,7 @@ import { updateStatus } from './ui/status';
 import { state } from './core/state';
 
 function main(): void {
+  initUI();
   initScene();
   buildCube(state.ORDER);
   updateHistoryUI();
