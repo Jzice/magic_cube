@@ -29,22 +29,48 @@ npm run build:all    # 一次同时产出以上两种（发布用这个）
 
 ```text
 src/
-├── main.ts                  # 装配 + 渲染循环（唯一的编排处）
-├── types.ts                 # 共享类型，无运行时依赖
+├── main.ts                  # 装配与渲染循环（唯一的编排处）
+├── style.css                # 全局样式（玻璃拟态面板、动画、移动端适配）
+├── types/                   # 共享类型（Cubie / Move / FaceDef / Solver 等）+ 库类型声明
 ├── config/                  # 纯数据 + 少量推导（配置即建模）
-├── scene/                   # 场景装配 / 材质 / 构件 / 构建
-├── view/                    # 视角状态机 / 键鼠交互
-├── floorplan/               # 2D 平面图（如适用）
-└── ui/                      # 按钮绑定与状态同步
+│   ├── cubeConfig.ts        # 尺寸 / 配色 / 阶数选项 / 打乱步数
+│   └── tutorialConfig.ts    # 七步层先法教学数据
+├── core/                    # 场景 / 魔方建模 / 转层引擎 / 记号 / 状态 / 动作
+│   ├── geometry.ts          # 旋转向量 / 矩阵、轴常量等纯几何工具
+│   ├── state.ts             # 全局状态单一数据源（ORDER / cubies / isBusy / …）
+│   ├── scene.ts             # 相机 / 渲染器 / 光照 / 阴影 / Fog / OrbitControls
+│   ├── cubeModel.ts         # 程序化构建 cubie 与贴纸、isSolved、cubieMap
+│   ├── moveEngine.ts        # performMove + 动画循环（整层旋转 + easeInOut 缓动）
+│   ├── notation.ts          # Move ↔ 标准记号（R/L/U/D/F/B + ' / 2）互转、公式解析
+│   └── actions.ts           # scramble / autoSolve / resetCube 等高层动作
+├── interaction/             # 指针拖拽转层与旋转视角
+│   └── pointerControls.ts   # pointer 事件射线拾取贴纸、推算转层轴
+├── audio/                   # Web Audio 程序化音效
+│   └── audioEngine.ts       # 转层咔哒声 / 胜利琶音 / 静音开关
+├── solver/                  # 逻辑魔方 + 真求解器 + 调度（无 Three.js 依赖）
+│   ├── logicalCube.ts       # 纯逻辑魔方模型（便于 Node 测试）
+│   ├── cubeState.ts         # 从 cubies 抽取逻辑 facelet 状态
+│   ├── solver.ts            # getSolver 按阶数派发
+│   ├── layerSolver2.ts      # 2 阶 IDA\*（双 PDB 启发式）
+│   └── layerSolver3.ts      # 3 阶映射 rubiks-cube-solver（CFOP）
+└── ui/                      # 顶部控制栏 / 历史 / 教学 / 状态 / Toast
+    ├── bootstrap.ts         # 注入 UI 外壳 DOM（顶栏 / 底栏 / 记录 / 教学 / Toast）
+    ├── controls.ts          # 绑定顶栏按钮与下拉框
+    ├── historyPanel.ts      # 操作记录面板渲染与高亮
+    ├── tutorialPanel.ts     # 七步教学面板构建与开合
+    └── status.ts            # 状态栏文本 + 居中 Toast
 ```
 
 **依赖必须保持单向，不要引入循环**：
 
-- `types` ← 所有层；`config` ← `scene` / `floorplan`。
-- `view` **只能以类型方式** import `scene`（取 `SceneContext`），不得反向调用场景构建逻辑。
-- `floorplan` **不得** import `view`：通过 `getMode()` 回调获知当前模式，重绘动作由 `main.ts` 注入。
-- `ui` **不得** import 任何渲染模块：只做 DOM 与回调，具体动作由 `main.ts` 编排。
-- 跨模块的"副作用"一律通过构造函数回调注入，不要直接 import。
+- `types` ← 所有层（无运行时依赖）。
+- `config` ← `core` / `solver` / `ui`（纯数据，单向被依赖）。
+- `core` 内部：`scene` / `cubeModel` / `moveEngine` / `notation` / `actions` 依赖 `state` 与 `geometry` 与 `config`；`actions` 编排 `moveEngine` + `solver` + `audio`。
+- `solver` 仅依赖 `types` 与 `core/geometry` 与 `cubeState` 的状态抽取；**不依赖 Three.js**，可在 Node 测试。
+- `interaction` 依赖 `core/moveEngine` 与 `core/state`，仅调用引擎 API，不接触渲染细节。
+- `ui` 依赖 `core/actions`、`core/state`、`audio`、`config`；通过回调触发动作，**不直接 import 渲染模块**。
+- `main.ts` 是唯一编排处：装配 scene、构建魔方、绑定 UI 与交互、启动渲染循环。
+- 跨模块的"副作用"一律通过函数参数 / 回调注入，不要直接 import 反向调用。
 
 ## 4. 核心约定
 
@@ -52,10 +78,10 @@ src/
 
 **改业务 = 改 `src/config/`，不要去渲染代码里堆叠构造调用。**
 
-- 构件用带类型的数组 / 对象描述（如 `BoxSpec`：`{ w, h, d, x, y, z, material, ... }`）。
+- 魔方由 cubie 集合程序化构建，尺寸 / 配色 / 阶数 / 打乱步数等集中在 `src/config/cubeConfig.ts`，不要去建模代码里堆叠字面量。
 - **坐标是中心点，不是角点**：每个 cubie 的 `grid` 用整数网格坐标 `(0..N-1)`，世界坐标 = `(grid - (N-1)/2) * STEP`；轴向 X/Y/Z 与 Three.js 一致。
 - 派生量用推导函数生成，**改常量要能自动联动**，不要手写死数值。
-- 新增 `MaterialKey` / 构件类型时，必须同时在对应工厂里给出实现。
+- 新增配色 / 阶数选项时，必须同步 `COLORS` / `FACE_CODE` / `ORDER_OPTIONS` 等映射，保证建模与求解状态抽取一致。
 
 ### 单文件发布约束
 
@@ -83,20 +109,25 @@ src/
 
 | 任务 | 位置 |
 | --- | --- |
-| 改尺寸 / 加构件 / 改布局 | `src/config/` |
-| 改材质或贴图 | `src/scene/materials.ts` |
-| 改构件构造细节 | `src/scene/builders.ts` |
-| 改视角切换 / 移动手感 | `src/view/viewState.ts` |
-| 改键鼠交互 | `src/view/interaction.ts` |
-| 改 2D 平面图（如适用） | `src/floorplan/` |
-| 加按钮、改 UI 状态 | `index.html`（DOM）+ `src/ui/ui.ts` + `src/style.css` |
+| 改尺寸 / 配色 / 阶数 / 打乱步数 | `src/config/cubeConfig.ts` |
+| 改教学步骤文案 | `src/config/tutorialConfig.ts` |
+| 改场景 / 相机 / 光照 / 阴影 / Fog | `src/core/scene.ts` |
+| 改魔方建模 / 贴纸 / 还原判定 | `src/core/cubeModel.ts` |
+| 改转层动画 / 缓动 / 忙锁 | `src/core/moveEngine.ts` |
+| 改记号 / 公式解析 | `src/core/notation.ts` |
+| 改打乱 / 自动还原 / 重置 动作 | `src/core/actions.ts` |
+| 改指针拖拽转层 / 视角手感 | `src/interaction/pointerControls.ts` |
+| 改音效 | `src/audio/audioEngine.ts` |
+| 改求解器（2 / 3 阶） | `src/solver/`（logicalCube / cubeState / layerSolver2 / layerSolver3 / solver） |
+| 加按钮 / 改 UI 外壳或绑定 | `src/ui/bootstrap.ts` + `src/ui/controls.ts` + `src/style.css` |
+| 改操作记录 / 教学 / 状态栏 | `src/ui/{historyPanel,tutorialPanel,status}.ts` |
 | 改构建 / 发布方式 | `vite.config.ts` + `scripts/build-all.mjs` |
 
 ## 6. 已知陷阱
 
 - **多次构建会互相覆盖**：`build()` 会清空 `outDir`，所以 `scripts/build-all.mjs` 先构建到 `dist/.tmp-<variant>/` 再改名搬运。不要用 `vite build` 多次直接输出到同一 `outDir`。
 - **CDN 模式的 importmap 顺序**：必须出现在第一个 module script 之前。`vite.config.ts` 里用 `order: 'pre'` + 替换 `<head>`（而非 `</head>`）实现，改动时不要破坏这个顺序。
-- **3D 与 2D 是两套独立数据**（如适用）：改 3D 后必须手动同步 2D，否则两视图不一致。
+- **本项目只有 3D 视图，无 2D 平面图**：原型模板里的 2D 联动约束不适用，不要在代码里预留 floorplan / 2D 模块。
 - **构建产物 `dist/` 已 gitignore**：不要提交，也不要手工编辑产物。
 
 ## 7. 改完之后怎么验证
