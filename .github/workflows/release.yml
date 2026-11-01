@@ -1,0 +1,40 @@
+name: Release
+
+# 打 v* tag 或手动触发：build:all 后创建 GitHub Release 并附加两个单文件产物。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build single-file artifacts
+        run: npm run build:all
+
+      - name: Create Release with assets
+        uses: softprops/action-gh-release@v2
+        with:
+          # 若未打 tag（手动触发），生成一个预发布版本
+          tag_name: ${{ github.ref_name || format('manual-{0}', github.run_number) }}
+          files: |
+            dist/index.html
+            dist/index.cdn.html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

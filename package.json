@@ -1,0 +1,26 @@
+{
+  "name": "magic-cube",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "N 阶魔方模拟器（Three.js）—— 支持 2–5 阶、拖拽转层、随机打乱、层先法自动求解、互动教学与音效",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit && node scripts/build-all.mjs offline",
+    "build:cdn": "tsc --noEmit && node scripts/build-all.mjs cdn",
+    "build:all": "tsc --noEmit && node scripts/build-all.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "rubiks-cube-solver": "^1.2.0",
+    "three": "0.160.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.160.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vite-plugin-singlefile": "^2.0.2"
+  }
+}
