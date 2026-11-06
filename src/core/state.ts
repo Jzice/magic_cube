@@ -44,6 +44,8 @@ export const state = {
   notationHistory: [] as string[],
 
   isBusy: false,
+  /** 高层动作互斥锁：打乱 / 求解回放期间禁止其它操作插入，保证动作序列不交错。 */
+  operationLocked: false,
   isMuted: false,
   audioCtx: null as AudioContext | null,
 };

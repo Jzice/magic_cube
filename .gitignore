@@ -12,3 +12,7 @@ test*.log
 Thumbs.db
 .idea/
 .vscode/
+
+# IDE / AI 项目数据与本地缓存
+.codebuddy/
+cache/

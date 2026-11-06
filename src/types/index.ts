@@ -44,8 +44,8 @@ export interface AnimState {
   layerCubies: Cubie[];
 }
 
-/** 求解器接口：输入逻辑魔方状态，输出可直接执行的 Move 序列。 */
+/** 求解器接口：输入逻辑魔方状态，输出可直接执行的 Move 序列；无解 / 状态非法时返回 null。 */
 export interface Solver {
   readonly supportedOrders: number[];
-  solve(cube: import('../solver/logicalCube').LogicalCube): Move[];
+  solve(cube: import('../solver/logicalCube').LogicalCube): Move[] | null;
 }

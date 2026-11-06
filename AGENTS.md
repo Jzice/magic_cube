@@ -50,9 +50,10 @@ src/
 ├── solver/                  # 逻辑魔方 + 真求解器 + 调度（无 Three.js 依赖）
 │   ├── logicalCube.ts       # 纯逻辑魔方模型（便于 Node 测试）
 │   ├── cubeState.ts         # 从 cubies 抽取逻辑 facelet 状态
-│   ├── solver.ts            # getSolver 按阶数派发
-│   ├── layerSolver2.ts      # 2 阶 IDA\*（双 PDB 启发式）
-│   └── layerSolver3.ts      # 3 阶映射 rubiks-cube-solver（CFOP）
+│   ├── solver.ts            # 求解调度 + 状态校验 + 解法干跑验证
+│   ├── validate.ts          # 魔方状态合法性校验（结构 / 中心 / 角棱朝向与奇偶）
+│   ├── layerSolver2.ts      # 2 阶嵌入合法 3×3 状态后复用两阶段求解
+│   └── layerSolver3.ts      # 3 阶 cubejs（Kociemba 两阶段）映射回本引擎动作
 └── ui/                      # 顶部控制栏 / 历史 / 教学 / 状态 / Toast
     ├── bootstrap.ts         # 注入 UI 外壳 DOM（顶栏 / 底栏 / 记录 / 教学 / Toast）
     ├── controls.ts          # 绑定顶栏按钮与下拉框

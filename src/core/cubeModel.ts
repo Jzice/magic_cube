@@ -3,7 +3,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import type { Cubie } from '../types';
 import { state } from './state';
 import { syncGround } from './scene';
-import { CUBIE_SIZE, FACE_DEFS, STEP } from '../config/cubeConfig';
+import { CUBIE_SIZE, FACE_DEFS, STEP, faceKeyFromNormal } from '../config/cubeConfig';
 
 /** 由整数网格坐标生成唯一键。 */
 export function gridKey(v: THREE.Vector3): string {
@@ -32,6 +32,7 @@ export function buildCube(order: number): void {
   state.moveHistory = [];
   state.notationHistory = [];
   state.isBusy = false;
+  state.operationLocked = false;
   state.animState = null;
 
   state.ORDER = order;
@@ -105,13 +106,21 @@ export function buildCube(order: number): void {
   syncGround();
 }
 
-/** 判定魔方是否已完全还原（所有 cubie 朝向为单位矩阵）。 */
+const tmpNormal = new THREE.Vector3();
+
+/**
+ * 判定魔方是否已还原：每张贴纸都指向它原本所属的面。
+ *
+ * 不能用「orientation 是否为单位矩阵」判定：中心块只有一张贴纸，绕自身法线的旋转
+ * 在视觉上完全不可见，但会改变矩阵；求解器给出的解法与打乱序列不同，合法地还原后
+ * 中心块常残留这种自转。此处与 LogicalCube.isSolved() 采用同一套「按面判定」口径。
+ */
 export function isSolved(): boolean {
-  const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
   for (const c of state.cubies) {
-    const e = c.orientation.elements;
-    for (let i = 0; i < 16; i++) {
-      if (Math.abs(e[i] - identity[i]) > 1e-4) return false;
+    for (const [key, mesh] of Object.entries(c.stickers)) {
+      if (!mesh) continue;
+      tmpNormal.copy(mesh.userData.normal as THREE.Vector3).applyMatrix4(c.orientation);
+      if (faceKeyFromNormal(tmpNormal) !== key) return false;
     }
   }
   return true;

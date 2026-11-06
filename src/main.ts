@@ -9,6 +9,7 @@ import { buildTutorialSteps } from './ui/tutorialPanel';
 import { updateHistoryUI } from './ui/historyPanel';
 import { updateStatus } from './ui/status';
 import { state } from './core/state';
+import { warmupSolver3 } from './solver/layerSolver3';
 
 function main(): void {
   initUI();
@@ -28,6 +29,14 @@ function main(): void {
   startLoop();
 
   updateStatus('拖动贴纸转层 · 拖拽空白处旋转视角 · 滚轮缩放');
+
+  // 空闲时预热 3 阶求解器剪枝表，避免首次点击「自动还原」时同步初始化卡顿。
+  const warmup = (): void => warmupSolver3();
+  const idle = (window as Window & {
+    requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  }).requestIdleCallback;
+  if (idle) idle.call(window, warmup, { timeout: 5000 });
+  else window.setTimeout(warmup, 800);
 }
 
 main();

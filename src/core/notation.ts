@@ -78,7 +78,7 @@ export function parseFormula(formula: string): Move[] {
 
 /** 执行一串记号（教学单步 / 一键演示用）。 */
 export async function executeFormula(formula: string, singleStepOnly = false): Promise<void> {
-  if (state.isBusy) return;
+  if (state.isBusy || state.operationLocked) return;
   const moves = parseFormula(formula);
   if (moves.length === 0) return;
 

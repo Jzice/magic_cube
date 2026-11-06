@@ -55,7 +55,7 @@ for (let seed = 1; seed <= TRIALS; seed++) {
   const rng = mulberry32(seed);
   const cube = LogicalCube.solved(3);
   scramble(cube, 30, rng);
-  const sol = solver.solve(cube);
+  const sol = solver.solve(cube) ?? [];
   for (const mv of sol) cube.applyMove(mv.axis, mv.layerIndex, mv.dir);
   if (cube.isSolved()) ok++;
   else {

@@ -41,7 +41,7 @@ for (let seed = 1; seed <= TRIALS; seed++) {
     const m = moves[Math.floor(rng() * moves.length)];
     cube.applyMove(m.axis, m.layerIndex, m.dir);
   }
-  const sol = solver.solve(cube);
+  const sol = solver.solve(cube) ?? [];
   maxLen = Math.max(maxLen, sol.length);
   for (const mv of sol) cube.applyMove(mv.axis, mv.layerIndex, mv.dir);
   if (cube.isSolved()) ok++;
@@ -60,7 +60,7 @@ if (firstFailSeed !== -1) {
     const m = moves[Math.floor(rng() * moves.length)];
     cube.applyMove(m.axis, m.layerIndex, m.dir);
   }
-  const sol = solver.solve(cube);
+  const sol = solver.solve(cube) ?? [];
   for (const mv of sol) cube.applyMove(mv.axis, mv.layerIndex, mv.dir);
   console.log(`First failing seed=${firstFailSeed}, solvedAfter=${cube.isSolved()}, solLen=${sol.length}`);
 }

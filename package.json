@@ -13,6 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cubejs": "^1.3.2",
     "rubiks-cube-solver": "^1.2.0",
     "three": "0.160.0"
   },

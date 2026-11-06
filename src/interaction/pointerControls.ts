@@ -9,6 +9,7 @@ const camRight = new THREE.Vector3();
 const camUp = new THREE.Vector3();
 const dragWorld = new THREE.Vector3();
 const proj = new THREE.Vector3();
+const normalProj = new THREE.Vector3();
 const axisVec = new THREE.Vector3();
 
 function updatePointer(e: PointerEvent): void {
@@ -27,7 +28,7 @@ function pickSticker(): THREE.Mesh | null {
 
 /** 指针按下：命中贴纸则进入“拖拽转层”预备，否则交给 OrbitControls 旋转视角。 */
 export function onPointerDown(e: PointerEvent): void {
-  if (e.button !== 0 || state.isBusy) return;
+  if (e.button !== 0 || state.isBusy || state.operationLocked) return;
   updatePointer(e);
   const sticker = pickSticker();
 
@@ -35,8 +36,13 @@ export function onPointerDown(e: PointerEvent): void {
     const ds = state.dragState;
     ds.active = true;
     ds.started = false;
-    ds.cubie = sticker.userData.cubie as (typeof state.cubies)[number] | null;
-    ds.faceNormal = (sticker.userData.normal as THREE.Vector3).clone();
+    const cubie = sticker.userData.cubie as (typeof state.cubies)[number] | null;
+    ds.cubie = cubie;
+    // 贴纸保存的是建模时的局部法线，转过若干层后必须按 cubie 当前朝向换算成世界法线。
+    const localNormal = sticker.userData.normal as THREE.Vector3;
+    ds.faceNormal = cubie
+      ? localNormal.clone().applyMatrix4(cubie.orientation).normalize()
+      : localNormal.clone();
     ds.startX = e.clientX;
     ds.startY = e.clientY;
     if (state.controls) state.controls.enabled = false;
@@ -59,9 +65,10 @@ export function onPointerMove(e: PointerEvent): void {
   camRight.crossVectors(camDir, state.camera!.up).normalize();
   camUp.crossVectors(camRight, camDir).normalize();
 
-  dragWorld.addScaledVector(camRight, dx).addScaledVector(camUp, -dy).normalize();
+  // dragWorld 是模块级复用向量，每次拖拽前必须清零，否则会累加上一次的方向造成轴推断偏置。
+  dragWorld.set(0, 0, 0).addScaledVector(camRight, dx).addScaledVector(camUp, -dy).normalize();
   const n = ds.faceNormal!;
-  proj.copy(dragWorld).sub(n.clone().multiplyScalar(dragWorld.dot(n)));
+  proj.copy(dragWorld).sub(normalProj.copy(n).multiplyScalar(dragWorld.dot(n)));
 
   if (proj.lengthSq() < 1e-6) {
     ds.active = false;
